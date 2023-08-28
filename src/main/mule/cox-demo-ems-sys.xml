@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd  http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd">
+    <global-property doc:name="Global Property" doc:id="3481c866-7a34-498b-93be-32869f01a96a" name="api.id" value="18862614" />
+    <global-property doc:name="Global Property" doc:id="507a0d1f-3379-4c16-ba9f-6753acb6c99b" name="http.port" value="8082" />
+    <http:listener-config name="cox-demo-ems-sys-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="${http.port}" />
+    </http:listener-config>
+    <apikit:config name="cox-demo-ems-sys-config" api="cox-demo-ems-sys.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <api-gateway:autodiscovery apiId="${api.id}" ignoreBasePath="true" doc:name="API Autodiscovery" doc:id="d06d5b6d-cdea-4fc7-b8df-2435714f576d" flowRef="cox-demo-ems-sys-main" />
+    <flow name="cox-demo-ems-sys-main">
+        <http:listener config-ref="cox-demo-ems-sys-httpListenerConfig" path="/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="cox-demo-ems-sys-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="cox-demo-ems-sys-console">
+        <http:listener config-ref="cox-demo-ems-sys-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="cox-demo-ems-sys-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\events\(event-id):cox-demo-ems-sys-config">
+        <ee:transform>
+            <ee:variables>
+                <ee:set-variable variableName="eventID"><![CDATA[attributes.uriParams.'event-id']]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <logger level="INFO" message="get:\events\(event-id):cox-demo-ems-sys-config" />
+    </flow>
+    <flow name="post:\events:cox-demo-ems-sys-config">
+        <logger level="INFO" doc:name="payload" doc:id="5232e119-60db-4792-9762-3142f8ac8adb" message="#[payload]" />
+        <ee:transform>
+            <ee:message>
+            </ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="outboundHeaders" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "event-id": uuid()
+}]]></ee:set-variable>
+			</ee:variables>
+        </ee:transform>
+    </flow>
+    <flow name="get:\service-providers:cox-demo-ems-sys-config">
+        <logger level="INFO" message="get:\service-providers:cox-demo-ems-sys-config" />
+        <ee:transform doc:name="Set Mock Response Payload" doc:id="d90c0b6d-3f6a-4ed6-82cb-4438091f2d67">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+[
+	{
+		"id": "sp001",
+		"name": "Tire Choice Auto Service Center",
+		"address": {
+			"address1": "1342 Winter St",
+			"address2": null,
+			"city": "Johnstown",
+			"state": "NC",
+			"postalCode": "27230"
+		},
+		"phone": "123-123-1234"
+	},
+	{
+		"id": "sp002",
+		"name": "Martin's Mechanic Shop",
+		"address": {
+			"address1": "885 Columbus Ave",
+			"address2": null,
+			"city": "Sidney",
+			"state": "NC",
+			"postalCode": "27245"
+		},
+		"phone": "123-123-1234"
+	},	
+]]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="get:\service-providers\(service-provider-id):cox-demo-ems-sys-config">
+        <ee:transform>
+            <ee:variables>
+                <ee:set-variable variableName="service-provider-id">attributes.uriParams.'service-provider-id'</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <logger level="INFO" message="get:\service-providers\(service-provider-id):cox-demo-ems-sys-config" />
+		<choice doc:name="Choice" doc:id="48472c9c-0822-42f6-93a4-ca4ffcc9acea" >
+			<when expression='#[vars."service-provider-id" == "sp001"]'>
+				<ee:transform doc:name="Set Response Payload" doc:id="73f80ba8-2b27-48cc-a6d1-5490d85ea1c0" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"id": "sp001",
+	"name": "Tire Choice Auto Service Center",
+	"address": {
+		"address1": "1342 Winter St",
+		"address2": null,
+		"city": "Johnstown",
+		"state": "NC",
+		"postalCode": "27230"
+	},
+	"phone": "123-123-1234"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<when expression='#[vars."service-provider-id" == "sp002"]'>
+				<ee:transform doc:name="Set Response Payload" doc:id="78858096-4717-42b5-91a4-08b18f50905b" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"id": "sp002",
+	"name": "Martin's Mechanic Shop",
+	"address": {
+		"address1": "885 Columbus Ave",
+		"address2": null,
+		"city": "Sidney",
+		"state": "NC",
+		"postalCode": "27245"
+	},
+	"phone": "123-123-1234"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<set-variable value="404" doc:name="httpStatus to 404" doc:id="2369c67f-3dfa-4c6d-8a25-ca07682e7326" variableName="httpStatus"/>
+			</otherwise>
+		</choice>
+    </flow>
+</mule>
